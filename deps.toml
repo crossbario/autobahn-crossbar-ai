@@ -1,5 +1,5 @@
 # Dependencies as plain checkouts at pinned commits in .deps/ (gitignored) - not submodules.
-# `bash scripts/deps.sh sync` makes .deps/ match this file. See TOOLING-STRUCTURE.md.
+# `just deps` makes .deps/ match this file. See TOOLING-STRUCTURE.md.
 
 [wamp-ai]
 url    = "https://github.com/wamp-proto/wamp-ai.git"
@@ -7,4 +7,4 @@ commit = "64f2e5da554005b93855d0daf70b8a61b187d26b"
 
 [wamp-cicd]
 url    = "https://github.com/wamp-proto/wamp-cicd.git"
-commit = "28e11f01c591b61ab06d59b013eafe55dad0ba6d"
+commit = "1378b0ba2d22b6f5d688f6e11294d183c1c047bc"
