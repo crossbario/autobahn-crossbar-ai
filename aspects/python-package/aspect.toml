@@ -1,0 +1,45 @@
+# The python-package aspect: machine-readable house-standard requirements.
+# Mirrors scripts/check.py; see SKILL.md and references/house-standard.md.
+
+name        = "python-package"
+description = "The AAIARE house standard for a Python package."
+provider    = "autobahn-crossbar-ai"
+
+# Load-bearing rules: a divergence is a FAIL (the package is not the house pattern).
+[require.build_backend]
+backend  = "hatchling.build"
+requires = "hatchling"
+severity = "fail"
+
+[require.version]
+scheme   = "calver"        # YY.M.MICRO
+micro_min = 1              # never .0; .devN suffix allowed
+severity = "fail"
+
+[require.requires_python]
+floor    = "3.11"
+severity = "fail"
+
+# House-pattern rules: a divergence is a WARN (brought up by a rollout, not failed).
+[require.license]
+# Per-repo value: "MIT" (OSS) or "LicenseRef-Proprietary" (closed). Presence required.
+present  = true
+severity = "warn"
+
+[require.tool_ruff]
+present           = true
+select_for_new    = ["ALL"]   # new code; legacy packages warn until a rollout raises them
+severity          = "warn"
+
+[require.tool_ty]
+present  = true
+severity = "warn"
+
+[require.tool_pytest]
+present  = true               # [tool.pytest.ini_options]
+severity = "warn"
+
+[require.headers]
+# SPDX / copyright header on every source file.
+spdx     = true
+severity = "warn"
