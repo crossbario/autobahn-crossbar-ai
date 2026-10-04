@@ -1,8 +1,8 @@
 # The AAIARE Python-package house standard
 
 The rules the `python-package` aspect checks and reconciles. The reference
-implementation is `txaio` (the cleanest pure-Python package); the cffi packages
-(`autobahn-python`, `zlmdb`, `crossbar`, `py-lmdb`) are the extension cases.
+implementation is `txaio` (the cleanest pure-Python package); the `cffi` packages
+(`autobahn-python`, `zlmdb`) are the extension cases.
 
 Severity: **FAIL** = load-bearing (the package is not the house pattern); **WARN** =
 house pattern, raised by a rollout rather than failed on a legacy package.
@@ -27,8 +27,9 @@ CalVer `YY.M.MICRO` with **MICRO ≥ 1** (never `.0`); a `.devN` suffix is allow
 
 ## Python floor — FAIL
 
-`requires-python = ">=3.11"` (or higher). Classifiers list CPython + PyPy and the
-supported minors (3.11–3.14).
+`requires-python = ">=3.11"`. Classifiers list CPython + PyPy and the
+supported minors (3.11–3.14). PyPy is a first-class citizen! Python 3.15 is emerging,
+not yet required.
 
 ## License — WARN (presence) / per-repo value
 
@@ -38,57 +39,57 @@ A single PEP 639 expression, no `License ::` classifier:
 - Closed packages: `license = "LicenseRef-Proprietary"` + `license-files = ["LICENSE"]`.
 
 The value differs per package and is a decision, not a fork of the aspect. A
-deliberately different OSS license (e.g. `crossbar` is `EUPL-1.2`) is a decision.
-
-## Lint / format — WARN
-
-```toml
-[tool.ruff]
-line-length = 88
-target-version = "py311"
-extend-exclude = [".ai", ".cicd"]   # and .deps for a deps-flavor repo
-
-[tool.ruff.lint]
-select = ["ALL"]        # NEW code; legacy packages use E4/E7/E9/F and warn until raised
-
-[tool.ruff.format]
-quote-style = "double"
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-```
-
-## Types — WARN
-
-```toml
-[tool.ty]
-[tool.ty.rules]
-```
-
-`ty` (Astral's type checker) is the house type checker.
-
-## Tests — WARN
-
-```toml
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = ["--strict-markers", "--strict-config"]
-```
-
-`coverage` config alongside.
+deliberately different license (OSS or other) is a decision.
 
 ## Source headers — WARN
 
-Every source file carries a copyright / SPDX header:
+Every source file carries a copyright with SPDX header:
 
 ```python
-# Copyright (c) typedef int GmbH, Germany, <year>. All rights reserved.
-# SPDX-License-Identifier: MIT              # or LicenseRef-Proprietary for closed packages
+###############################################################################
+#
+#  Copyright (C) typedef int GmbH
+#  SPDX-License-Identifier: MIT
+#
+###############################################################################
 ```
+
+or
+
+```python
+###############################################################################
+#
+#  Copyright (C) typedef int GmbH
+#  SPDX-License-Identifier: EUPL-1.2
+#
+###############################################################################
+```
+
+or
+
+```python
+###############################################################################
+#
+#  Copyright (C) typedef int GmbH (Germany). All rights reserved.
+#  SPDX-License-Identifier: LicenseRef-Proprietary
+#
+###############################################################################
+```
+
+Drop a year or range of years completely (follow "Modern FSFE / Linux Foundation / Tech Practice")!
 
 ## Environment / runner
 
-`uv` + `.venv` + a `justfile` with the standard recipe set
-(`create` / `install` / `install-dev` / `install-tools` / `test` / `check`, per
-Python-version venvs `cpy311..cpy314` / `pypy311`). `nox` is emerging, not yet
-required.
+`uv` + `.venvs` + a `justfile` with the standard recipe set
+
+1. *none* (list recipes)
+2. `create`
+3. `install`
+4. `install-dev`
+5. `install-tools`
+6. `clean-build`
+7. `distclean`
+8. `test`
+9. `check`
+
+per Python-version venvs `cpy311..cpy314` / `pypy311`. `cpy315` is emerging, not yet required.
