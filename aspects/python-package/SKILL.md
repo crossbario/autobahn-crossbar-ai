@@ -3,7 +3,7 @@ name: python-package
 description: >-
   The Autobahn-Crossbar.io house standard for a Python package. Checks (and, via rollout,
   reconciles) a repository's pyproject build backend, CalVer version, Python
-  floor, license, lint/type/test tooling and source headers. Use when onboarding
+  floor, license and source headers. Use when onboarding
   or auditing a Python package in the estate, or when asked whether a repo follows
   the house Python-package pattern.
 ---
@@ -33,6 +33,9 @@ package's `pyproject.toml` has:
   the aspect does not fork.
 - **An SPDX / copyright header** on every source file.
 
+Lint (`ruff`), types (`ty`) and tests (`pytest`) are **preliminary and parked** in
+[`.parked/`](.parked/) — not yet active, so the checker does not enforce them.
+
 ## Inspect (check) — available now
 
 `scripts/check.py` reads a repo's `pyproject.toml` and reports a finding per rule
@@ -46,9 +49,8 @@ python aspects/python-package/scripts/check.py --json <repo>
 
 `FAIL` is reserved for the load-bearing rules (no `pyproject.toml`, wrong build
 backend, non-CalVer or `.0` version, a Python floor below 3.11). The softer rules
-(`ruff select=ALL`, `ty`, `pytest`, headers, a missing license string) are `WARN`:
-they are the house pattern, but a legacy package is brought up to them by a
-**rollout**, not failed outright.
+(a missing `license` string, missing source headers) are `WARN`: they are the house
+pattern, but a legacy package is brought up to them by a **rollout**, not failed outright.
 
 ## Reconcile (rollout) — forthcoming
 
