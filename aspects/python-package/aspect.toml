@@ -26,18 +26,8 @@ severity = "fail"
 present  = true
 severity = "warn"
 
-[require.tool_ruff]
-present           = true
-select_for_new    = ["ALL"]   # new code; legacy packages warn until a rollout raises them
-severity          = "warn"
-
-[require.tool_ty]
-present  = true
-severity = "warn"
-
-[require.tool_pytest]
-present  = true               # [tool.pytest.ini_options]
-severity = "warn"
+# NOTE: lint (ruff) / types (ty) / tests (pytest) requirements are PRELIMINARY and
+# PARKED in .parked/ - not active, not materialized here. See SKILL.md / .parked/.
 
 [require.headers]
 # SPDX / copyright header on every source file.

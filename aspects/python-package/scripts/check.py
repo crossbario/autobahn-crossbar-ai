@@ -104,27 +104,6 @@ def _check_license(pp: dict) -> Finding:
     return Finding("license", WARN, "no PEP 639 [project].license string")
 
 
-def _check_ruff(pp: dict) -> Finding:
-    if _get(pp, "tool", "ruff") is None:
-        return Finding("ruff", FAIL, "no [tool.ruff]")
-    select = _get(pp, "tool", "ruff", "lint", "select") or []
-    if "ALL" in select:
-        return Finding("ruff", OK, "configured; select = ALL")
-    return Finding("ruff", WARN, f"configured; select is not ALL ({select})")
-
-
-def _check_ty(pp: dict) -> Finding:
-    if _get(pp, "tool", "ty") is None:
-        return Finding("ty", WARN, "no [tool.ty] type-checker config")
-    return Finding("ty", OK, "configured")
-
-
-def _check_pytest(pp: dict) -> Finding:
-    if _get(pp, "tool", "pytest", "ini_options") is None:
-        return Finding("pytest", WARN, "no [tool.pytest.ini_options]")
-    return Finding("pytest", OK, "configured")
-
-
 def _check_headers(repo: Path) -> Finding:
     src = repo / "src"
     files = sorted(src.rglob("*.py"))[:20] if src.is_dir() else []
@@ -156,9 +135,6 @@ def inspect_repo(repo: Path) -> list[Finding]:
         _check_version(pp),
         _check_requires_python(pp),
         _check_license(pp),
-        _check_ruff(pp),
-        _check_ty(pp),
-        _check_pytest(pp),
         _check_headers(repo),
     ]
 
