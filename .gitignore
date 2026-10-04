@@ -1,0 +1,3 @@
+
+# deps (plain checkouts, materialized by scripts/deps.sh)
+.deps/
