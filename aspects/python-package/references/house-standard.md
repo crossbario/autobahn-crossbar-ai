@@ -43,7 +43,10 @@ deliberately different license (OSS or other) is a decision.
 
 ## Source headers — WARN
 
-Every source file carries a copyright with SPDX header:
+Every **non-generated** source file carries a copyright with SPDX header. Generated
+files (marker in the file head: `automatically generated` / `do not modify` /
+`@generated`, e.g. FlatBuffers output) are **exempt** — the generator owns their
+header. The header:
 
 ```python
 ###############################################################################
