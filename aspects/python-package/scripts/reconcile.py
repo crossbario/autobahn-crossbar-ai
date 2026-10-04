@@ -37,6 +37,7 @@ from _pp import (
     has_header,
     house_header,
     is_generated,
+    line_count,
     repo_license,
     source_files,
 )
@@ -69,6 +70,7 @@ def reconcile_repo(repo: Path) -> dict:
             "path": path.relative_to(repo).as_posix(),
             "action": "prepend_header",
             "license": spdx,
+            "loc": line_count(path),
             "header": header,
         }
         for path in source_files(repo)
@@ -101,7 +103,10 @@ def main(argv: list[str] | None = None) -> int:
         n_d = len(r["decisions_required"])
         print(f"\n{name}: {n_c} change(s), {n_d} decision(s) [{digest}]")
         for c in r["changeset"]:
-            print(f"  + {c['action']} ({c['license']}): {c['path']}")
+            print(
+                f"  + {c['action']} ({c['license']}): "
+                f"{c['path']} (current {c['loc']} LOC)"
+            )
         for d in r["decisions_required"]:
             print(f"  ? {d['type']}: {d['path']}")
     return 0

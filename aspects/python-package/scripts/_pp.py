@@ -78,6 +78,11 @@ def has_header(path: Path) -> bool:
     return "Copyright" in _head(path)
 
 
+def line_count(path: Path) -> int:
+    """Return the number of lines in ``path`` (0 for an empty file)."""
+    return len(path.read_text(encoding="utf-8", errors="replace").splitlines())
+
+
 def house_header(spdx: str) -> str:
     """Return the house SPDX / copyright header block for a license id (no year)."""
     copyright_line = (
