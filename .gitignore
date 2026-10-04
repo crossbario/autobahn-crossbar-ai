@@ -1,3 +1,9 @@
 
 # deps (plain checkouts, materialized by scripts/deps.sh)
 .deps/
+
+# Python caches / tooling
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
