@@ -1,11 +1,15 @@
-# Copyright (c) typedef int GmbH, Germany, 2026. All rights reserved.
-# SPDX-License-Identifier: MIT
+###############################################################################
+#
+#  Copyright (C) typedef int GmbH
+#  SPDX-License-Identifier: MIT
+#
+###############################################################################
 """Check a Python package against the AAIARE house standard (``python-package`` aspect).
 
-Standalone and stdlib-only: it reads ``<repo>/pyproject.toml`` and reports a finding
-per rule. See ``../SKILL.md`` for the semantics and
-``../references/house-standard.md`` for the rules in detail. It imports nothing from
-the fleet engine, so it runs anywhere Python 3.11+ is available.
+Standalone and stdlib-only (Python 3.11+); imports nothing from the fleet engine. It
+reads ``<repo>/pyproject.toml`` + source tree and reports a finding per rule. See
+``../SKILL.md`` for semantics and ``../references/house-standard.md`` for the rules.
+Shared file/header logic lives in ``_pp.py`` so this agrees with ``reconcile.py``.
 
 Usage::
 
@@ -25,6 +29,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import tomllib
+from _pp import get, has_header, is_generated, source_files
 
 OK = "OK"
 WARN = "WARN"
@@ -44,81 +49,63 @@ class Finding:
     message: str
 
 
-def _get(table: object, *keys: str) -> object:
-    """Return a nested value from parsed TOML, or ``None`` if any key is missing."""
-    cur: object = table
-    for key in keys:
-        if not isinstance(cur, dict) or key not in cur:
-            return None
-        cur = cur[key]
-    return cur
-
-
 def _check_build_backend(pp: dict) -> Finding:
-    backend = _get(pp, "build-system", "build-backend")
-    requires = _get(pp, "build-system", "requires") or []
-    uses_hatchling = any("hatchling" in str(r) for r in requires)
-    if backend == "hatchling.build" and uses_hatchling:
+    backend = get(pp, "build-system", "build-backend")
+    requires = get(pp, "build-system", "requires") or []
+    if backend == "hatchling.build" and any("hatchling" in str(r) for r in requires):
         return Finding("build-backend", OK, "hatchling.build")
-    return Finding(
-        "build-backend",
-        FAIL,
-        f"must be hatchling.build (got build-backend={backend!r})",
-    )
+    return Finding("build-backend", FAIL, f"must be hatchling.build (got {backend!r})")
 
 
 def _check_version(pp: dict) -> Finding:
-    version = _get(pp, "project", "version")
+    version = get(pp, "project", "version")
     if not isinstance(version, str):
         return Finding("version", FAIL, "no [project].version")
     m = _CALVER.match(version)
     if not m:
         return Finding("version", FAIL, f"not CalVer YY.M.MICRO: {version!r}")
-    micro = int(m.group(3))
-    if micro < 1:
+    if int(m.group(3)) < 1:
         return Finding("version", FAIL, f"MICRO must be >= 1 (never .0): {version!r}")
     return Finding("version", OK, f"CalVer {version}")
 
 
 def _check_requires_python(pp: dict) -> Finding:
-    spec = _get(pp, "project", "requires-python")
+    spec = get(pp, "project", "requires-python")
     if not isinstance(spec, str):
         return Finding("requires-python", WARN, "no [project].requires-python")
     m = _MINPY.search(spec)
     if not m:
         return Finding("requires-python", WARN, f"no lower bound found: {spec!r}")
-    floor = (int(m.group(1)), int(m.group(2)))
-    if floor < MIN_PYTHON:
+    if (int(m.group(1)), int(m.group(2))) < MIN_PYTHON:
         return Finding(
             "requires-python",
             FAIL,
-            f"floor {floor[0]}.{floor[1]} is below {MIN_PYTHON[0]}.{MIN_PYTHON[1]}",
+            f"floor below {MIN_PYTHON[0]}.{MIN_PYTHON[1]}: {spec}",
         )
     return Finding("requires-python", OK, spec)
 
 
 def _check_license(pp: dict) -> Finding:
-    lic = _get(pp, "project", "license")
+    lic = get(pp, "project", "license")
     if isinstance(lic, str) and lic:
         return Finding("license", OK, lic)
     return Finding("license", WARN, "no PEP 639 [project].license string")
 
 
 def _check_headers(repo: Path) -> Finding:
-    src = repo / "src"
-    files = sorted(src.rglob("*.py"))[:20] if src.is_dir() else []
+    files = [f for f in source_files(repo) if not is_generated(f)]
     if not files:
-        return Finding("spdx-headers", WARN, "no src/**.py sampled")
-    missing = [
-        f.relative_to(repo).as_posix()
-        for f in files
-        if "Copyright" not in f.read_text(encoding="utf-8", errors="replace")[:600]
-    ]
+        return Finding("spdx-headers", WARN, "no non-generated src/**.py")
+    missing = [f for f in files if not has_header(f)]
     if missing:
         return Finding(
-            "spdx-headers", WARN, f"no copyright header in {len(missing)} file(s)"
+            "spdx-headers",
+            WARN,
+            f"no header in {len(missing)} of {len(files)} non-generated file(s)",
         )
-    return Finding("spdx-headers", OK, f"present in {len(files)} sampled file(s)")
+    return Finding(
+        "spdx-headers", OK, f"present in all {len(files)} non-generated file(s)"
+    )
 
 
 def inspect_repo(repo: Path) -> list[Finding]:
