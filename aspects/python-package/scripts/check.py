@@ -29,7 +29,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import tomllib
-from _pp import get, has_header, is_generated, source_files
+from _pp import get, has_header, non_generated_sources
 
 OK = "OK"
 WARN = "WARN"
@@ -93,7 +93,7 @@ def _check_license(pp: dict) -> Finding:
 
 
 def _check_headers(repo: Path) -> Finding:
-    files = [f for f in source_files(repo) if not is_generated(f)]
+    files = non_generated_sources(repo)
     if not files:
         return Finding("spdx-headers", WARN, "no non-generated src/**.py")
     missing = [f for f in files if not has_header(f)]

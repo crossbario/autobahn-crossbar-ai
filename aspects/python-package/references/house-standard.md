@@ -44,9 +44,15 @@ deliberately different license (OSS or other) is a decision.
 ## Source headers — WARN
 
 Every **non-generated** source file carries a copyright with SPDX header. Generated
-files (marker in the file head: `automatically generated` / `do not modify` /
-`@generated`, e.g. FlatBuffers output) are **exempt** — the generator owns their
-header. The header:
+code is **exempt** — the generator owns its header. "Generated" is a *tree*, not just a
+per-file marker: a file is exempt if it carries a marker in its head (`automatically
+generated` / `do not modify` / `@generated`, e.g. FlatBuffers output) **or** it lives in
+a generated directory tree — a directory whose subtree contains marker-bearing files and
+no hand-written file. This catches the empty/markerless package `__init__.py` a generator
+emits alongside its marked output (flatc literally `touch`es them); a header on those
+would be stripped by a clean regenerate (= drift, which a clean-regenerate CI check
+rejects). Genuine empty `__init__.py` (a test or hand-written package marker, whose tree
+has no generated files) are **not** exempt — they still get a header. The header:
 
 ```python
 ###############################################################################
