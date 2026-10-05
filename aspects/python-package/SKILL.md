@@ -31,8 +31,11 @@ package's `pyproject.toml` has:
 - **A PEP 639 `license`** — `MIT` or `EUPL-1.2` for the OSS packages, a proprietary SPDX
   expression (`LicenseRef-Proprietary`) for closed source ones. The value is per-repo;
   the aspect does not fork.
-- **An SPDX / copyright header** on every *non-generated* source file (generated
-  files — `automatically generated` / `do not modify` / `@generated` — are exempt).
+- **An SPDX / copyright header** on every *non-generated* source file. Generated code is
+  exempt by *tree*, not just per file: a marker (`automatically generated` / `do not
+  modify` / `@generated`) in the file head, **or** living in a generated directory tree
+  (so the empty `__init__.py` a generator emits are exempt too; genuine empty
+  `__init__.py` still get a header).
 
 Lint (`ruff`), types (`ty`) and tests (`pytest`) are **preliminary and parked** in
 [`.parked/`](.parked/) — not yet active, so the checker does not enforce them.

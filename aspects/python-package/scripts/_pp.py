@@ -68,9 +68,48 @@ def _head(path: Path) -> str:
 
 
 def is_generated(path: Path) -> bool:
-    """Whether ``path`` looks machine-generated (exempt from the header rule)."""
+    """Whether ``path`` carries a generator marker in its head (per-file signal)."""
     head = _head(path).lower()
     return any(marker in head for marker in _GENERATED_MARKERS)
+
+
+def _generated_dirs(files: list[Path]) -> set[Path]:
+    """Directories whose whole subtree is generated code.
+
+    A directory is generated iff its subtree contains at least one marker-bearing file
+    AND no *hand-written* file (a ``.py`` that is neither marker-bearing nor an
+    ``__init__.py``). This captures a generator's output *tree* - e.g. flatc emits
+    marked ``.py`` plus empty/markerless package ``__init__.py`` - without mistaking a
+    hand-written package that merely *contains* a generated sub-package for generated.
+    """
+    has_marker: dict[Path, bool] = {}
+    has_handwritten: dict[Path, bool] = {}
+    for f in files:
+        generated = is_generated(f)
+        handwritten = not generated and f.name != "__init__.py"
+        for parent in f.parents:
+            has_marker[parent] = has_marker.get(parent, False) or generated
+            has_handwritten[parent] = has_handwritten.get(parent, False) or handwritten
+    return {d for d, marked in has_marker.items() if marked and not has_handwritten[d]}
+
+
+def non_generated_sources(repo: Path) -> list[Path]:
+    """Return ``src/**/*.py`` subject to the header rule - generated code excluded.
+
+    A file is exempt if it carries a generator marker itself, or it lives inside a
+    generated directory tree (see :func:`_generated_dirs`). The latter catches the
+    empty/markerless ``__init__.py`` a generator emits alongside its marked output: a
+    header on those would be stripped by a clean regenerate (= drift). Genuine empty
+    ``__init__.py`` (a test or hand-written package marker, whose tree has no generated
+    files) are NOT exempt - they still get a header.
+    """
+    files = source_files(repo)
+    gen_dirs = _generated_dirs(files)
+    return [
+        f
+        for f in files
+        if not is_generated(f) and not any(d in gen_dirs for d in f.parents)
+    ]
 
 
 def has_header(path: Path) -> bool:
