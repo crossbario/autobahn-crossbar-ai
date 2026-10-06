@@ -46,13 +46,15 @@ deliberately different license (OSS or other) is a decision.
 Every **non-generated** source file carries a copyright with SPDX header. Generated
 code is **exempt** — the generator owns its header. "Generated" is a *tree*, not just a
 per-file marker: a file is exempt if it carries a marker in its head (`automatically
-generated` / `do not modify` / `@generated`, e.g. FlatBuffers output) **or** it lives in
-a generated directory tree — a directory whose subtree contains marker-bearing files and
-no hand-written file. This catches the empty/markerless package `__init__.py` a generator
-emits alongside its marked output (flatc literally `touch`es them); a header on those
-would be stripped by a clean regenerate (= drift, which a clean-regenerate CI check
-rejects). Genuine empty `__init__.py` (a test or hand-written package marker, whose tree
-has no generated files) are **not** exempt — they still get a header. The header:
+generated` / `do not modify` / `@generated`, e.g. FlatBuffers output) **or** it is an
+*empty* `__init__.py` inside a generated directory tree — a directory whose subtree
+contains marker-bearing files and no hand-written file (a `.py` that is neither
+marker-bearing nor an empty `__init__.py`). This catches the empty package `__init__.py` a
+generator emits alongside its marked output (flatc literally `touch`es them); a header on
+those would be stripped by a clean regenerate (= drift, which a clean-regenerate CI check
+rejects). A **content-bearing** `__init__.py` is hand-written and **gets a header** even
+inside a generated tree; a genuine empty `__init__.py` outside any generated tree (a test
+or package marker) also gets one. The header:
 
 ```python
 ###############################################################################

@@ -73,20 +73,38 @@ def is_generated(path: Path) -> bool:
     return any(marker in head for marker in _GENERATED_MARKERS)
 
 
+def _is_empty_init(path: Path) -> bool:
+    """Whether ``path`` is an ``__init__.py`` with no code (comments/blank lines only).
+
+    An existing header is comment lines, so a headered-but-otherwise-empty package init
+    still counts as empty - the rule stays idempotent once a genuine init is headered. A
+    content-bearing ``__init__.py`` (any non-comment, non-blank line) is NOT empty: it is
+    hand-written and must be headered, even inside a generated tree.
+    """
+    if path.name != "__init__.py":
+        return False
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            return False
+    return True
+
+
 def _generated_dirs(files: list[Path]) -> set[Path]:
     """Directories whose whole subtree is generated code.
 
     A directory is generated iff its subtree contains at least one marker-bearing file
-    AND no *hand-written* file (a ``.py`` that is neither marker-bearing nor an
-    ``__init__.py``). This captures a generator's output *tree* - e.g. flatc emits
-    marked ``.py`` plus empty/markerless package ``__init__.py`` - without mistaking a
-    hand-written package that merely *contains* a generated sub-package for generated.
+    AND no *hand-written* file - a ``.py`` that is neither marker-bearing nor an *empty*
+    ``__init__.py``. This captures a generator's output *tree* (e.g. flatc emits marked
+    ``.py`` plus empty package ``__init__.py``) without mistaking a hand-written package
+    that merely *contains* a generated sub-package, or a content-bearing ``__init__.py``
+    that happens to sit in such a tree, for generated.
     """
     has_marker: dict[Path, bool] = {}
     has_handwritten: dict[Path, bool] = {}
     for f in files:
         generated = is_generated(f)
-        handwritten = not generated and f.name != "__init__.py"
+        handwritten = not generated and not _is_empty_init(f)
         for parent in f.parents:
             has_marker[parent] = has_marker.get(parent, False) or generated
             has_handwritten[parent] = has_handwritten.get(parent, False) or handwritten
@@ -96,19 +114,20 @@ def _generated_dirs(files: list[Path]) -> set[Path]:
 def non_generated_sources(repo: Path) -> list[Path]:
     """Return ``src/**/*.py`` subject to the header rule - generated code excluded.
 
-    A file is exempt if it carries a generator marker itself, or it lives inside a
-    generated directory tree (see :func:`_generated_dirs`). The latter catches the
-    empty/markerless ``__init__.py`` a generator emits alongside its marked output: a
-    header on those would be stripped by a clean regenerate (= drift). Genuine empty
-    ``__init__.py`` (a test or hand-written package marker, whose tree has no generated
-    files) are NOT exempt - they still get a header.
+    A file is exempt if it carries a generator marker itself, or it is an *empty*
+    ``__init__.py`` inside a generated directory tree (see :func:`_generated_dirs`) - the
+    package init a generator emits, which a clean regenerate would strip a header from
+    (drift). A *content-bearing* ``__init__.py`` is never tree-exempt (it is hand-written
+    and gets a header), and a genuine empty ``__init__.py`` outside any generated tree
+    (a test or package marker) is not exempt either - both still get a header.
     """
     files = source_files(repo)
     gen_dirs = _generated_dirs(files)
     return [
         f
         for f in files
-        if not is_generated(f) and not any(d in gen_dirs for d in f.parents)
+        if not is_generated(f)
+        and not (_is_empty_init(f) and any(d in gen_dirs for d in f.parents))
     ]
 
 
