@@ -33,9 +33,10 @@ package's `pyproject.toml` has:
   the aspect does not fork.
 - **An SPDX / copyright header** on every *non-generated* source file. Generated code is
   exempt by *tree*, not just per file: a marker (`automatically generated` / `do not
-  modify` / `@generated`) in the file head, **or** living in a generated directory tree
-  (so the empty `__init__.py` a generator emits are exempt too; genuine empty
-  `__init__.py` still get a header).
+  modify` / `@generated`) in the file head, **or** an *empty* `__init__.py` living in a
+  generated directory tree (the package init a generator emits). A *content-bearing*
+  `__init__.py` is hand-written and gets a header even inside a generated tree; a genuine
+  empty `__init__.py` outside any generated tree gets one too.
 
 Lint (`ruff`), types (`ty`) and tests (`pytest`) are **preliminary and parked** in
 [`.parked/`](.parked/) — not yet active, so the checker does not enforce them.
