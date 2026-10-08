@@ -14,9 +14,8 @@ they cannot drift. Stdlib-only.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import tomllib
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -76,10 +75,10 @@ def is_generated(path: Path) -> bool:
 def _is_empty_init(path: Path) -> bool:
     """Whether ``path`` is an ``__init__.py`` with no code (comments/blank lines only).
 
-    An existing header is comment lines, so a headered-but-otherwise-empty package init
-    still counts as empty - the rule stays idempotent once a genuine init is headered. A
-    content-bearing ``__init__.py`` (any non-comment, non-blank line) is NOT empty: it is
-    hand-written and must be headered, even inside a generated tree.
+    An existing header is comment lines, so a headered-but-otherwise-empty package
+    init still counts as empty - the rule stays idempotent once a genuine init is
+    headered. A content-bearing ``__init__.py`` (any non-comment, non-blank line) is
+    NOT empty: it is hand-written and must be headered, even inside a generated tree.
     """
     if path.name != "__init__.py":
         return False
@@ -115,11 +114,12 @@ def non_generated_sources(repo: Path) -> list[Path]:
     """Return ``src/**/*.py`` subject to the header rule - generated code excluded.
 
     A file is exempt if it carries a generator marker itself, or it is an *empty*
-    ``__init__.py`` inside a generated directory tree (see :func:`_generated_dirs`) - the
-    package init a generator emits, which a clean regenerate would strip a header from
-    (drift). A *content-bearing* ``__init__.py`` is never tree-exempt (it is hand-written
-    and gets a header), and a genuine empty ``__init__.py`` outside any generated tree
-    (a test or package marker) is not exempt either - both still get a header.
+    ``__init__.py`` inside a generated directory tree (see :func:`_generated_dirs`) -
+    the package init a generator emits, which a clean regenerate would strip a header
+    from (drift). A *content-bearing* ``__init__.py`` is never tree-exempt (it is
+    hand-written and gets a header), and a genuine empty ``__init__.py`` outside any
+    generated tree (a test or package marker) is not exempt either - both still get a
+    header.
     """
     files = source_files(repo)
     gen_dirs = _generated_dirs(files)
