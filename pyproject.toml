@@ -8,14 +8,24 @@
 # Tooling configuration only: this repository builds no package. The aspect scripts
 # under aspects/*/scripts/ are standalone, stdlib-only Python 3.11+ - the contract
 # between a public aspect and the private engine that runs it (they import nothing
-# from it). ruff, ty and pytest are dev-only; the recipes are `just check|test|ci`.
+# from it). ruff, ty and pytest are dev-only (`just install-tools`), the recipes the
+# estate's standard ones (`just check|test <venv>`).
+
+[dependency-groups]
+# PEP 735; installed by `just install-tools <venv>` (pip >= 25.1: --group dev).
+dev = [
+    "ruff==0.16.10",
+    "ty==0.0.84",
+    "pytest==9.1.1",
+    "pytest-cov>=7.0",
+]
 
 [tool.ruff]
 target-version = "py311"
 line-length = 88
 # .deps/: wamp-ai and wamp-cicd, checked out for the workflow recipes - their own
-# repositories, linted there. .venvs/: the dev venvs of `just venv`.
-extend-exclude = [".deps", ".venvs"]
+# repositories, linted there. .venvs/: the dev venvs (`just create <venv>`).
+extend-exclude = [".deps", ".venvs", ".uv-cache"]
 
 [tool.ruff.lint]
 # Code that computes changes to other repositories: fully strict (every rule), then

@@ -1,6 +1,6 @@
-# The gate for this repository's own code: the same `just ci` the control node and
-# the maintainer's dev PC run (triple testing), on the oldest and newest supported
-# CPython. Read-only token, no secrets.
+# The gate for this repository's own code: the same `just check` / `just test` the
+# control node and the maintainer's dev PC run (triple testing). Each recipe creates
+# its venv from the standard map (cpy311..cpy314, pypy311). Read-only token, no secrets.
 
 name: check
 
@@ -15,19 +15,30 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: just ci (CPython ${{ matrix.python }})
+  check:
+    name: just check cpy311 (lint, format, types, tests + coverage)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@v6
       - uses: extractions/setup-just@v3
-      - name: just ci ${{ matrix.python }}
-        run: just ci ${{ matrix.python }}
+      - run: just check cpy311
+
+  test:
+    name: just test ${{ matrix.venv }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        venv: [cpy311, cpy312, cpy313, cpy314, pypy311]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      - uses: extractions/setup-just@v3
+      - run: just test ${{ matrix.venv }}
