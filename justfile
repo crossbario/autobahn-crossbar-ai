@@ -136,6 +136,14 @@ setup-completion:
     echo "==> Setup complete. Please restart your shell or run the following command:"
     echo "    source \"${COMPLETION_FILE}\""
 
+# Make `.deps/` what `deps.toml` says: this repository's dependencies as plain checkouts at pinned commits - it carries no submodules (see TOOLING-STRUCTURE.md).
+deps *args:
+    bash scripts/deps.sh sync {{args}}
+
+# Internal guard: `.deps/` must match deps.toml (AI_POLICY.md and CLAUDE.md link into it).
+_deps-ok:
+    @bash scripts/deps.sh check >/dev/null || { echo "ERROR: .deps/ does not match deps.toml - run: just deps" >&2; exit 1; }
+
 # Remove ALL generated files, including venvs, caches, and coverage. WARNING: This is a destructive operation.
 distclean:
     #!/usr/bin/env bash
@@ -296,7 +304,7 @@ install-tools-all:
 # -----------------------------------------------------------------------------
 
 # Automatically fix all formatting and code style issues.
-fix-format venv="": (install-tools venv)
+fix-format venv="": (_deps-ok) (install-tools venv)
     #!/usr/bin/env bash
     set -e
     VENV_NAME="{{ venv }}"
@@ -318,7 +326,7 @@ fix-format venv="": (install-tools venv)
 autoformat venv="": (fix-format venv)
 
 # Lint code using Ruff in a single environment
-check-format venv="": (install-tools venv)
+check-format venv="": (_deps-ok) (install-tools venv)
     #!/usr/bin/env bash
     set -e
     VENV_NAME="{{ venv }}"
@@ -333,7 +341,7 @@ check-format venv="": (install-tools venv)
     "${VENV_PATH}/bin/ruff" format --check .
 
 # Run static type checking with ty (Astral's Rust-based type checker)
-check-typing venv="": (install-tools venv)
+check-typing venv="": (_deps-ok) (install-tools venv)
     #!/usr/bin/env bash
     set -e
     VENV_NAME="{{ venv }}"
@@ -348,7 +356,7 @@ check-typing venv="": (install-tools venv)
     "${VENV_PATH}/bin/ty" check --python "${VENV_PATH}/bin/python" aspects tests
 
 # Run the tests with coverage of the aspect scripts (usage: `just check-coverage cpy314`)
-check-coverage venv="": (install-tools venv)
+check-coverage venv="": (_deps-ok) (install-tools venv)
     #!/usr/bin/env bash
     set -e
     VENV_NAME="{{ venv }}"
@@ -373,7 +381,7 @@ check venv="": (check-format venv) (check-typing venv) (check-coverage venv)
 # -----------------------------------------------------------------------------
 
 # Run the test suite (usage: `just test cpy314`)
-test venv="": (install-tools venv)
+test venv="": (_deps-ok) (install-tools venv)
     #!/usr/bin/env bash
     set -e
     VENV_NAME="{{ venv }}"
