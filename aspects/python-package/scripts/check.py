@@ -29,7 +29,18 @@ import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from _pp import get, has_header, non_generated_sources
+from _pp import (
+    HOUSE_LICENSES,
+    LICENSE_DEVIATION,
+    DecisionFileError,
+    canonical_sha256,
+    current_decision,
+    get,
+    has_header,
+    license_observation,
+    non_generated_sources,
+    unexcluded_submodules,
+)
 
 OK = "OK"
 WARN = "WARN"
@@ -87,11 +98,45 @@ def _check_requires_python(pp: dict) -> Finding:
     return Finding("requires-python", OK, spec)
 
 
-def _check_license(pp: dict) -> Finding:
+def _check_license(pp: dict, repo: Path) -> Finding:
     lic = get(pp, "project", "license")
-    if isinstance(lic, str) and lic:
+    if not (isinstance(lic, str) and lic):
+        return Finding("license", WARN, "no PEP 639 [project].license string")
+    if lic in HOUSE_LICENSES:
         return Finding("license", OK, lic)
-    return Finding("license", WARN, "no PEP 639 [project].license string")
+    try:
+        found = current_decision(repo, LICENSE_DEVIATION)
+    except DecisionFileError as exc:
+        return Finding("license", FAIL, f"{lic}: untrustworthy decision file: {exc}")
+    pre = canonical_sha256(license_observation(repo))
+    if found is not None and get(found[1], "precondition", "sha256") == pre:
+        return Finding(
+            "license",
+            WARN,
+            f"{lic}: deviation from the house standard, decided "
+            f"{found[1]['answer']!r} in .decisions/python-package/{found[0].name}",
+        )
+    stale = " (the recorded decision is stale: re-decide)" if found else ""
+    return Finding(
+        "license",
+        WARN,
+        f"{lic}: deviation from the house standard ({', '.join(HOUSE_LICENSES)}) - "
+        f"a signed decision is required{stale}",
+    )
+
+
+def _check_lint_excludes(pp: dict, repo: Path) -> Finding:
+    missing = unexcluded_submodules(repo, pp)
+    if missing is None:
+        return Finding("lint-excludes", OK, "no [tool.ruff] configuration")
+    if missing:
+        return Finding(
+            "lint-excludes",
+            FAIL,
+            "submodules ruff would lint as this package's code - add to "
+            f"[tool.ruff] extend-exclude: {', '.join(missing)}",
+        )
+    return Finding("lint-excludes", OK, "every submodule is excluded from ruff")
 
 
 def _check_headers(repo: Path) -> Finding:
@@ -123,8 +168,9 @@ def inspect_repo(repo: Path) -> list[Finding]:
         _check_build_backend(pp),
         _check_version(pp),
         _check_requires_python(pp),
-        _check_license(pp),
+        _check_license(pp, repo),
         _check_headers(repo),
+        _check_lint_excludes(pp, repo),
     ]
 
 

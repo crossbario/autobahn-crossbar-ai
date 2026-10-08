@@ -31,15 +31,20 @@ CalVer `YY.M.MICRO` with **MICRO ≥ 1** (never `.0`); a `.devN` suffix is allow
 supported minors (3.11–3.14). PyPy is a first-class citizen! Python 3.15 is emerging,
 not yet required.
 
-## License — WARN (presence) / per-repo value
+## License — WARN (presence) / a deviation is a signed decision
 
 A single PEP 639 expression, no `License ::` classifier:
 
 - OSS packages: `license = "MIT"`.
 - Closed packages: `license = "LicenseRef-Proprietary"` + `license-files = ["LICENSE"]`.
 
-The value differs per package and is a decision, not a fork of the aspect. A
-deliberately different license (OSS or other) is a decision.
+Any other value (OSS or not — `EUPL-1.2` for crossbar) is a legitimate per-repo choice
+but a **deviation** from the house standard: the reconcile raises a `license_deviation`
+decision, answered by a human and recorded as a signed decision file in the target
+(`.decisions/python-package/<YYYYMMDD>-license_deviation[-N].toml`, see `SKILL.md`).
+`keep` proceeds with the declared license (the EUPL-1.2 header template below is for
+exactly that case); `relicense:MIT` is carried out by the maintainer, never by the
+aspect.
 
 ## Source headers — WARN
 
@@ -88,6 +93,23 @@ or
 ```
 
 Drop a year or range of years completely (follow "Modern FSFE / Linux Foundation / Tech Practice")!
+
+## Submodules excluded from linting — FAIL
+
+Where the package configures ruff (`[tool.ruff]`), every path in `.gitmodules` is covered
+by a top-level `exclude` / `extend-exclude` entry (the path itself, a parent folder, or a
+glob such as `deps/*`):
+
+```toml
+[tool.ruff]
+extend-exclude = [".ai", ".cicd", ".autobahn-crossbar-ai"]
+```
+
+A checked-out submodule is another repository's code under that repository's rules;
+linted under this package's rules it fails (aaiare-fleet-manager#38 failed on 17 findings
+in a pinned aspect repository). A `[tool.ruff.lint]` exclude is not enough — `ruff
+format` still visits the path. The reconcile adds the missing entries
+(`ruff_extend_exclude`).
 
 ## Environment / runner
 

@@ -14,6 +14,10 @@ they cannot drift. Stdlib-only.
 
 from __future__ import annotations
 
+import fnmatch
+import hashlib
+import json
+import re
 import tomllib
 from typing import TYPE_CHECKING
 
@@ -22,6 +26,14 @@ if TYPE_CHECKING:
 
 HEADER_SCAN = 600  # bytes of a file scanned for a header / generator marker
 PROPRIETARY = "LicenseRef-Proprietary"
+ASPECT = "python-package"
+
+# The house license standard: OSS packages are MIT, closed ones LicenseRef-Proprietary.
+# Any other value (EUPL-1.2 included) is a legitimate per-repo choice - but a deviation,
+# which must be a signed decision in the target (A18), never silently accepted.
+HOUSE_LICENSES = ("MIT", PROPRIETARY)
+LICENSE_DEVIATION = "license_deviation"
+LICENSE_OPTIONS = ("keep", "relicense:MIT")
 
 # Generated files are the generator's concern, not the house header rule's. Detected
 # by a marker in the file head (FlatBuffers, protobuf, @generated, ...).
@@ -151,3 +163,160 @@ def house_header(spdx: str) -> str:
     rule = "#" * 79
     body = f"#\n#  {copyright_line}\n#  SPDX-License-Identifier: {spdx}\n#\n"
     return f"{rule}\n{body}{rule}\n"
+
+
+# --- canonical digests -----------------------------------------------------------
+
+
+def canonical_sha256(value: object) -> str:
+    """sha256 of the canonical JSON of ``value`` (sorted keys, no whitespace)."""
+    text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def license_observation(repo: Path) -> dict[str, str | None]:
+    """What a license decision is answered against: the declared value + LICENSE.
+
+    The keys are the precondition's ``paths``; ``LICENSE`` is the sha256 of the file's
+    bytes (``None`` if absent), so any edit to it invalidates the decision.
+    """
+    lic = repo / "LICENSE"
+    return {
+        "pyproject.toml#project.license": repo_license(repo),
+        "LICENSE": hashlib.sha256(lic.read_bytes()).hexdigest()
+        if lic.is_file()
+        else None,
+    }
+
+
+# --- decision files (A18; fleet-and-aspect-governance.md §5) ----------------------
+
+
+class DecisionFileError(ValueError):
+    """A decision file that cannot be trusted as written - never silently skipped."""
+
+
+def _decision_key(name: str, dtype: str) -> tuple[str, int] | None:
+    m = re.fullmatch(rf"(\d{{8}})-{re.escape(dtype)}(?:-(\d+))?\.toml", name)
+    if m is None:
+        return None
+    return m.group(1), int(m.group(2) or 1)
+
+
+def decision_files(repo: Path, dtype: str) -> list[Path]:
+    """``.decisions/python-package/<YYYYMMDD>-<dtype>[-N].toml``, oldest first."""
+    folder = repo / ".decisions" / ASPECT
+    if not folder.is_dir():
+        return []
+    keyed = []
+    for path in folder.iterdir():
+        key = _decision_key(path.name, dtype)
+        if key is not None:
+            keyed.append((key, path))
+    return [path for _key, path in sorted(keyed)]
+
+
+def current_decision(repo: Path, dtype: str) -> tuple[Path, dict] | None:
+    """The current decision of type ``dtype``: the NEWEST file, validated.
+
+    Newest wins strictly - an older file is history, never a fallback. Raises
+    :class:`DecisionFileError` on anything that cannot be trusted as written: a file
+    that is not TOML, names another aspect or type, an answer outside its options, a
+    licensing decision not decided by a human, no precondition, or a broken
+    ``supersedes`` chain (every file but the first names its predecessor).
+    """
+    files = decision_files(repo, dtype)
+    if not files:
+        return None
+    for i, path in enumerate(files):
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            msg = f"{path.name}: not a readable TOML decision file: {exc}"
+            raise DecisionFileError(msg) from exc
+        expected = files[i - 1].name if i else None
+        _validate(path, data, dtype, expected)
+    return files[-1], tomllib.loads(files[-1].read_text(encoding="utf-8"))
+
+
+def _license_problems(data: dict) -> list[str]:
+    problems = []
+    if data.get("answer") not in LICENSE_OPTIONS:
+        problems.append(f"answer {data.get('answer')!r} unknown to this aspect")
+    if data.get("decided_by") != "human":
+        problems.append("a licensing decision must be decided_by = 'human'")
+    return problems
+
+
+def _validate(path: Path, data: dict, dtype: str, supersedes: str | None) -> None:
+    problems = []
+    if data.get("schema") != 1:
+        problems.append(f"schema {data.get('schema')!r} (expected 1)")
+    if data.get("aspect") != ASPECT:
+        problems.append(f"aspect {data.get('aspect')!r} (expected {ASPECT!r})")
+    if data.get("type") != dtype:
+        problems.append(f"type {data.get('type')!r} (expected {dtype!r})")
+    options = data.get("options")
+    if not isinstance(options, list) or data.get("answer") not in options:
+        problems.append(f"answer {data.get('answer')!r} is not one of {options!r}")
+    if dtype == LICENSE_DEVIATION:
+        problems += _license_problems(data)
+    pre = get(data, "precondition", "sha256")
+    if not (isinstance(pre, str) and re.fullmatch(r"[0-9a-f]{64}", pre)):
+        problems.append("no [precondition] sha256")
+    if data.get("supersedes") != supersedes:
+        problems.append(
+            f"supersedes {data.get('supersedes')!r} (expected {supersedes!r})"
+        )
+    if problems:
+        msg = f"{path.name}: " + "; ".join(problems)
+        raise DecisionFileError(msg)
+
+
+# --- submodules must not be linted as the package's own code --------------------
+
+
+def submodule_paths(repo: Path) -> list[str]:
+    """The ``path = ...`` entries of the repo's ``.gitmodules`` (sorted)."""
+    gm = repo / ".gitmodules"
+    if not gm.is_file():
+        return []
+    text = gm.read_text(encoding="utf-8")
+    return sorted(
+        {m.group(1).strip() for m in re.finditer(r"(?m)^\s*path\s*=\s*(.+)$", text)}
+    )
+
+
+def ruff_excludes(pp: dict) -> list[str] | None:
+    """``[tool.ruff]`` exclude + extend-exclude; ``None`` if ruff is not configured."""
+    ruff = get(pp, "tool", "ruff")
+    if not isinstance(ruff, dict):
+        return None
+    out: list[str] = []
+    for key in ("exclude", "extend-exclude"):
+        value = ruff.get(key)
+        if isinstance(value, list):
+            out += [str(v) for v in value]
+    return out
+
+
+def unexcluded_submodules(repo: Path, pp: dict) -> list[str] | None:
+    """Submodule paths ruff would lint as package code (``None``: no ruff config)."""
+    excludes = ruff_excludes(pp)
+    if excludes is None:
+        return None
+    patterns = [
+        e.strip().removeprefix("./").removeprefix("/").rstrip("/") for e in excludes
+    ]
+    return [p for p in submodule_paths(repo) if not _excluded(p, patterns)]
+
+
+def _excluded(path: str, patterns: list[str]) -> bool:
+    """Whether a ruff exclude pattern covers ``path``: the path or a parent, as a glob.
+
+    Top-level ``[tool.ruff]`` excludes only - they apply to ``ruff check`` *and*
+    ``ruff format``; a ``[tool.ruff.lint]`` exclude still lets the formatter in.
+    """
+    parts = path.split("/")
+    prefixes = ["/".join(parts[: i + 1]) for i in range(len(parts))]
+    return any(fnmatch.fnmatchcase(pre, pat) for pat in patterns for pre in prefixes)

@@ -56,8 +56,9 @@ def test_compliant_package(package):
             'license = "MIT"',
             'license = "EUPL-1.2"',
             "license",
-            OK,
-        ),  # presence only, today
+            WARN,
+        ),  # a deviation from the house standard (#12)
+        ('license = "MIT"', 'license = "LicenseRef-Proprietary"', "license", OK),
     ],
 )
 def test_rules(package, old, new, rule, status):
