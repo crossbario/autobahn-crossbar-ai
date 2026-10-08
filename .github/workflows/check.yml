@@ -1,0 +1,33 @@
+# The gate for this repository's own code: the same `just ci` the control node and
+# the maintainer's dev PC run (triple testing), on the oldest and newest supported
+# CPython. Read-only token, no secrets.
+
+name: check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: just ci (CPython ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      - uses: extractions/setup-just@v3
+      - name: just ci ${{ matrix.python }}
+        run: just ci ${{ matrix.python }}

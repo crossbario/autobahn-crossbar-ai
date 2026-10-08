@@ -14,11 +14,12 @@ it changes nothing.
 Scope today: add the house SPDX / copyright header to non-generated source files that
 have no header. Shared file/header logic lives in ``_pp.py`` so this agrees with
 ``check.py``: *generated* files are exempt (the generator owns their header), and a
-file with any ``Copyright`` line already counts as headed (enforcing the *exact* house
-banner is a stricter rule for later). "Generated" is a *tree*, not just a per-file marker:
-the empty/markerless ``__init__.py`` a generator emits alongside its marked output are
-exempt too (``_pp.non_generated_sources``). Output is canonical + deterministic (ops sorted
-by path, no timestamps/env), so the same inputs yield the same JSON and ``digest``.
+file with any ``Copyright`` line already counts as headed (enforcing the *exact*
+house banner is a stricter rule for later). "Generated" is a *tree*, not just a
+per-file marker: the empty/markerless ``__init__.py`` a generator emits alongside its
+marked output are exempt too (``_pp.non_generated_sources``). Output is canonical +
+deterministic (ops sorted by path, no timestamps/env), so the same inputs yield the
+same JSON and ``digest``.
 
 Usage::
 

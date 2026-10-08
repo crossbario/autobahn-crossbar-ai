@@ -1,0 +1,64 @@
+###############################################################################
+#
+#  Copyright (C) typedef int GmbH
+#  SPDX-License-Identifier: MIT
+#
+###############################################################################
+
+# Tooling configuration only: this repository builds no package. The aspect scripts
+# under aspects/*/scripts/ are standalone, stdlib-only Python 3.11+ - the contract
+# between a public aspect and the private engine that runs it (they import nothing
+# from it). ruff, ty and pytest are dev-only; the recipes are `just check|test|ci`.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+# .deps/: wamp-ai and wamp-cicd, checked out for the workflow recipes - their own
+# repositories, linted there. .venvs/: the dev venvs of `just venv`.
+extend-exclude = [".deps", ".venvs"]
+
+[tool.ruff.lint]
+# Code that computes changes to other repositories: fully strict (every rule), then
+# carve out ONLY genuine conflicts and what the aspect contract requires.
+select = ["ALL"]
+ignore = [
+    # Rules that conflict with `ruff format` (ruff owns formatting).
+    "COM812",  # missing-trailing-comma (formatter's job)
+    "ISC001",  # single-line-implicit-string-concatenation (formatter's job)
+    # Mutually-exclusive docstring rule pairs - pick one of each.
+    "D203",    # one-blank-line-before-class  (we use D211)
+    "D213",    # multi-line-summary-second-line (we use D212)
+    # The aspect contract.
+    "T201",    # check.py / reconcile.py are CLIs: their printed output IS the interface
+    "INP001",  # scripts/ hold standalone scripts run by path, not an importable package
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may assert, need no docstrings/annotations, use literal fixtures, and run the
+# scripts as subprocesses (fixed program, controlled arguments).
+"tests/**" = ["S101", "D", "ANN", "PLR2004", "S603"]
+
+[tool.ruff.lint.isort]
+# The scripts import their shared helpers as a top-level sibling module.
+known-first-party = ["_pp"]
+
+[tool.ruff.lint.flake8-copyright]
+# Every file carries the estate's SPDX header. It has no year, so match the actual
+# notice instead of CPY001's default \d{4} regex, keeping the rule ON.
+notice-rgx = "(?i)Copyright \\(C\\) typedef int GmbH"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ty.environment]
+python-version = "3.11"
+# The scripts import their helpers (`from _pp import ...`) the way they run: by path.
+extra-paths = ["aspects/python-package/scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config", "-ra"]

@@ -25,10 +25,10 @@ import argparse
 import json
 import re
 import sys
+import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-import tomllib
 from _pp import get, has_header, non_generated_sources
 
 OK = "OK"
@@ -51,7 +51,9 @@ class Finding:
 
 def _check_build_backend(pp: dict) -> Finding:
     backend = get(pp, "build-system", "build-backend")
-    requires = get(pp, "build-system", "requires") or []
+    requires = get(pp, "build-system", "requires")
+    if not isinstance(requires, list):
+        requires = []
     if backend == "hatchling.build" and any("hatchling" in str(r) for r in requires):
         return Finding("build-backend", OK, "hatchling.build")
     return Finding("build-backend", FAIL, f"must be hatchling.build (got {backend!r})")
