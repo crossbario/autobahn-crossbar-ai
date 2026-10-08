@@ -29,6 +29,11 @@ house    = ["MIT", "LicenseRef-Proprietary"]
 decision = "license_deviation"
 severity = "warn"
 
+[require.open_decisions]
+# No .decisions/*/OPEN-*.toml: a required decision not yet taken (A18; never lands).
+none     = true
+severity = "fail"
+
 [require.lint_excludes]
 # Every .gitmodules path is in the top-level [tool.ruff] exclude/extend-exclude.
 submodules = true

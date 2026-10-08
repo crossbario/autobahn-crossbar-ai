@@ -39,6 +39,7 @@ from _pp import (
     has_header,
     license_observation,
     non_generated_sources,
+    open_decision_files,
     unexcluded_submodules,
 )
 
@@ -125,6 +126,19 @@ def _check_license(pp: dict, repo: Path) -> Finding:
     )
 
 
+def _check_open_decisions(repo: Path) -> Finding:
+    opened = open_decision_files(repo)
+    if not opened:
+        return Finding("open-decisions", OK, "no open decision")
+    listing = "; ".join(f"{path} ({question})" for path, question in opened)
+    return Finding(
+        "open-decisions",
+        FAIL,
+        f"{len(opened)} required decision(s) not taken - decide before landing: "
+        f"{listing}",
+    )
+
+
 def _check_lint_excludes(pp: dict, repo: Path) -> Finding:
     missing = unexcluded_submodules(repo, pp)
     if missing is None:
@@ -171,6 +185,7 @@ def inspect_repo(repo: Path) -> list[Finding]:
         _check_license(pp, repo),
         _check_headers(repo),
         _check_lint_excludes(pp, repo),
+        _check_open_decisions(repo),
     ]
 
 

@@ -320,3 +320,28 @@ def _excluded(path: str, patterns: list[str]) -> bool:
     parts = path.split("/")
     prefixes = ["/".join(parts[: i + 1]) for i in range(len(parts))]
     return any(fnmatch.fnmatchcase(pre, pat) for pat in patterns for pre in prefixes)
+
+
+# --- open decisions (A18): a required decision nobody has taken yet --------------
+
+
+def open_decision_files(repo: Path) -> list[tuple[str, str]]:
+    """``[(repo-relative path, question)]`` of every ``.decisions/*/OPEN-*.toml``.
+
+    The fleet driver records a question it cannot answer as such a file in the target
+    (typedefint/aaiare-fleet-manager#42); the maintainer's signed decision renames it
+    into the decision file. While one exists, the reconciliation is stopped by design.
+    """
+    root = repo / ".decisions"
+    if not root.is_dir():
+        return []
+    found = []
+    for path in sorted(root.glob("*/OPEN-*.toml")):
+        try:
+            question = tomllib.loads(path.read_text(encoding="utf-8")).get("question")
+        except (OSError, tomllib.TOMLDecodeError):
+            question = None
+        found.append(
+            (path.relative_to(repo).as_posix(), str(question or "(unreadable)"))
+        )
+    return found

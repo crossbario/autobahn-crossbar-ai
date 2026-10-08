@@ -61,7 +61,7 @@ python aspects/python-package/scripts/check.py --json <repo>
 
 `FAIL` is reserved for the load-bearing rules (no `pyproject.toml`, wrong build
 backend, non-CalVer or `.0` version, a Python floor below 3.11, a submodule ruff would
-lint as package code, an untrustworthy decision file). The softer rules
+lint as package code, an untrustworthy decision file, an **open decision**). The softer rules
 (a missing `license` string, missing source headers) are `WARN`: they are the house
 pattern, but a legacy package is brought up to them by a **rollout**, not failed outright.
 
@@ -99,6 +99,13 @@ A decision is signed data **in the target**, read by `reconcile.py` from
   broken `supersedes` chain — is an **error**, never silently skipped.
 - Verifying the decision commit's **signature** is the fleet driver's job before it
   resumes (fail closed); this aspect reads files.
+- **An open decision fails the check.** While the fleet driver waits for an answer, the
+  question sits in the target as `.decisions/python-package/OPEN-<YYYYMMDD>-<type>.toml`
+  (typedefint/aaiare-fleet-manager#42); the signed decision renames it into the decision
+  file. `check.py` FAILs while any `OPEN-*` file exists, naming each with its question,
+  so CI is red and the branch does not land (merge guard, layer a; `just land` refuses it
+  too, wamp-proto/wamp-cicd#76). `reconcile.py` never reads an `OPEN-*` file as an
+  answer.
 
 The one decision type today is **`license_deviation`**: a license outside `MIT` /
 `LicenseRef-Proprietary`. Options `keep` (headers use the declared license) and
