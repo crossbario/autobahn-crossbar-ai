@@ -291,3 +291,59 @@ def test_lint_only_excludes_still_let_the_formatter_in(package):
     gitmodules = '[submodule ".ai"]\n\tpath = .ai\n\turl = x\n'
     repo = package(**{"pyproject.toml": pp, ".gitmodules": gitmodules})
     assert _excludes(repo).status == FAIL
+
+
+# -- open decisions (#15): the merge guard's aspect layer --------------------------
+
+OPEN_REQUEST = """\
+schema = 1
+aspect = "python-package"
+type = "license_deviation"
+status = "open"
+question = "Keep EUPL-1.2?"
+options = ["keep", "relicense:MIT"]
+decided_by = ["human"]
+
+[precondition]
+paths = ["LICENSE", "pyproject.toml#project.license"]
+sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+"""
+
+
+def _open(repo, name="OPEN-20261008-license_deviation.toml"):
+    folder = repo / ".decisions" / "python-package"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_text(OPEN_REQUEST, encoding="utf-8")
+    return folder / name
+
+
+def _verdict(repo, rule):
+    (finding,) = [f for f in inspect_repo(repo) if f.rule == rule]
+    return finding
+
+
+def test_an_open_decision_fails_the_check_naming_it(crossbar):
+    _open(crossbar)
+    finding = _verdict(crossbar, "open-decisions")
+    assert finding.status == FAIL
+    assert "OPEN-20261008-license_deviation.toml (Keep EUPL-1.2?)" in finding.message
+    assert run_script("check.py", str(crossbar)).returncode == 1  # red CI
+
+
+def test_once_renamed_into_a_decision_nothing_is_open(crossbar):
+    opened = _open(crossbar)
+    opened.unlink()  # what --decide's rename does to the OPEN file
+    decide(crossbar, "20261008-license_deviation.toml")
+    assert _verdict(crossbar, "open-decisions").status == OK
+
+
+def test_no_decisions_at_all_is_ok(package):
+    assert _verdict(package(), "open-decisions").status == OK
+
+
+def test_reconcile_ignores_an_open_file_next_to_a_valid_decision(crossbar):
+    decide(crossbar, "20261008-license_deviation.toml")
+    _open(crossbar, "OPEN-20261009-license_deviation.toml")  # never read as an answer
+    result = reconcile_repo(crossbar)
+    assert result["decisions_required"] == []
+    assert {op["license"] for op in result["changeset"]} == {"EUPL-1.2"}

@@ -111,6 +111,13 @@ in a pinned aspect repository). A `[tool.ruff.lint]` exclude is not enough — `
 format` still visits the path. The reconcile adds the missing entries
 (`ruff_extend_exclude`).
 
+## Open decisions — FAIL
+
+No `.decisions/*/OPEN-*.toml` file exists. Such a file is a required decision nobody has
+taken yet: the fleet driver records a question it cannot answer there, and the
+maintainer's signed decision renames it into the decision file. A branch carrying one
+must not land — this rule makes CI red, and `just land` refuses it as well.
+
 ## Environment / runner
 
 `uv` + `.venvs` + a `justfile` with the standard recipe set
