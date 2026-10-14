@@ -1,0 +1,42 @@
+# The zlmdb-py-lmdb-fork aspect: machine-readable requirements.
+# Mirrors scripts/check.py; see SKILL.md. The upstream state the fork must match is
+# pinned separately, as data, in references/upstream-baseline.toml.
+
+name        = "zlmdb-py-lmdb-fork"
+description = "zlmdb's vendored py-lmdb fork and LMDB match a pinned upstream baseline."
+provider    = "autobahn-crossbar-ai"
+
+# Where the target keeps the fork. Kept apart from the baseline (upstream data), so the
+# aspect can be generalized mechanically, should a second vendored fork appear.
+[target]
+vendor_init = "src/zlmdb/_lmdb_vendor/__init__.py"  # carries __forked_from__
+tests_dir   = "src/zlmdb/tests/lmdb"                # the vendored upstream tests
+
+# One table per bundled LMDB release line; the key is py-lmdb's tree name.
+[target.engine.lib]           # LMDB 0.9.x, data format v1
+submodule = "lmdb-upstream"
+patches   = "lmdb-patches"
+
+[target.engine.lib1]          # LMDB 1.0.x, data format v3
+submodule = "lmdb-upstream-1.0"
+patches   = "lmdb-patches-1.0"
+
+# Load-bearing rules: a divergence is a FAIL.
+[require.forked_from]
+# __forked_from__ names the baseline's py-lmdb version.
+severity = "fail"
+
+[require.lmdb_pins]
+# Each engine's submodule is pinned (in HEAD) to the baseline's LMDB tag commit.
+severity = "fail"
+
+[require.deviations]
+# Vendored patch series byte-identical to upstream's; every upstream test case
+# present. Any difference needs a current signed `baseline_deviation` decision.
+decision = "baseline_deviation"
+severity = "fail"
+
+[require.open_decisions]
+# No .decisions/zlmdb-py-lmdb-fork/OPEN-*.toml: a required decision nobody took.
+none     = true
+severity = "fail"

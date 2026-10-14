@@ -50,7 +50,7 @@ ignore = [
 
 [tool.ruff.lint.isort]
 # The scripts import their shared helpers as a top-level sibling module.
-known-first-party = ["_pp"]
+known-first-party = ["_pp", "_fork"]
 
 [tool.ruff.lint.flake8-copyright]
 # Every file carries the estate's SPDX header. It has no year, so match the actual
@@ -66,8 +66,12 @@ indent-style = "space"
 
 [tool.ty.environment]
 python-version = "3.11"
-# The scripts import their helpers (`from _pp import ...`) the way they run: by path.
-extra-paths = ["aspects/python-package/scripts"]
+# The scripts import their helpers (`from _pp import ...`, `from _fork import ...`)
+# the way they run: by path.
+extra-paths = [
+    "aspects/python-package/scripts",
+    "aspects/zlmdb-py-lmdb-fork/scripts",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
