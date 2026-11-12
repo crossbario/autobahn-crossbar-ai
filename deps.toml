@@ -3,7 +3,7 @@
 
 [wamp-ai]
 url    = "https://github.com/wamp-proto/wamp-ai.git"
-commit = "ca453dfcec5bd859bd58b15905d5fbb67b80526c"
+commit = "ff7eb5d8c5fa44a48ff1cb7d3597dd508e831f6c"
 
 [wamp-cicd]
 url    = "https://github.com/wamp-proto/wamp-cicd.git"
